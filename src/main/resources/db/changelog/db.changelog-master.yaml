@@ -1,0 +1,31 @@
+databaseChangeLog:
+  - changeSet:
+      id: 001-baseline-existing-schema
+      author: cloudtask
+
+      preConditions:
+        - onFail: HALT
+        - tableExists:
+            tableName: TASKS
+        - sequenceExists:
+            sequenceName: TASK_SEQ
+        - sqlCheck:
+            expectedResult: "1"
+            sql: >
+              SELECT COUNT(*)
+              FROM USER_CONSTRAINTS
+              WHERE TABLE_NAME = 'TASKS'
+              AND CONSTRAINT_TYPE = 'P'
+              AND STATUS = 'ENABLED'
+        - sqlCheck:
+            expectedResult: "8"
+            sql: >
+              SELECT COUNT(*)
+              FROM USER_CONSTRAINTS
+              WHERE TABLE_NAME = 'TASKS'
+              AND CONSTRAINT_TYPE = 'C'
+              AND STATUS = 'ENABLED'
+
+      changes:
+        - tagDatabase:
+            tag: cloudtask-baseline-001
