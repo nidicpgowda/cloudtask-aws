@@ -6,6 +6,7 @@ import com.niveditha.cloudtask.dto.request.UpdateTaskStatusRequest;
 import com.niveditha.cloudtask.dto.response.TaskResponse;
 import com.niveditha.cloudtask.enums.Priority;
 import com.niveditha.cloudtask.enums.TaskStatus;
+import com.niveditha.cloudtask.exception.ResourceNotFoundException;
 import com.niveditha.cloudtask.service.TaskService;
 
 import org.junit.jupiter.api.Test;
@@ -209,5 +210,107 @@ public class TaskControllerTest {
         mockMvc.perform(get("/api/v1/tasks/priority/HIGH"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.content[0].title").value("Sample Task"));
+    }
+
+    @Test
+    void createTaskWithBlankTitleShouldReturnBadRequest() throws Exception {
+        String requestBody = """
+        {
+            "title": " ",
+            "description": "Test task",
+            "priority": "HIGH"
+        }
+        """;
+
+        mockMvc.perform(post("/api/v1/tasks")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(requestBody))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.fieldErrors.title").exists());
+
+        verifyNoInteractions(taskService);
+    }
+
+    @Test
+    void createTaskWithLongTitleShouldReturnBadRequest() throws Exception {
+        String longTitle = "a".repeat(151);
+
+        String requestBody = """
+        {
+            "title": "%s",
+            "description": "Test task",
+            "priority": "HIGH"
+        }
+        """.formatted(longTitle);
+
+        mockMvc.perform(post("/api/v1/tasks")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(requestBody))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.fieldErrors.title").exists());
+
+        verifyNoInteractions(taskService);
+    }
+
+    @Test
+    void createTaskWithInvalidPriorityShouldReturnBadRequest() throws Exception {
+        String requestBody = """
+        {
+            "title": "Test task",
+            "description": "Test task description",
+            "priority": "URGENT"
+        }
+        """;
+
+        mockMvc.perform(post("/api/v1/tasks")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(requestBody))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.message").value(
+                        "Invalid request body. Check JSON syntax, enum values and date formats."
+                ));
+
+        verifyNoInteractions(taskService);
+    }
+
+    @Test
+    void getTaskByIdWhenTaskDoesNotExistShouldReturnNotFound() throws Exception {
+        Long taskId = 999L;
+
+        when(taskService.getTaskById(taskId))
+                .thenThrow(new ResourceNotFoundException(
+                        "Task not found with id: " + taskId
+                ));
+
+        mockMvc.perform(get("/api/v1/tasks/{id}", taskId))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.message")
+                        .value("Task not found with id: 999"));
+    }
+
+    @Test
+    void getAllTasksWithNegativePageShouldReturnBadRequest() throws Exception {
+        mockMvc.perform(get("/api/v1/tasks")
+                        .param("page", "-1"))
+                .andExpect(status().isBadRequest());
+
+        verifyNoInteractions(taskService);
+    }
+    @Test
+    void getAllTasksWithPageSizeAboveLimitShouldReturnBadRequest() throws Exception {
+        mockMvc.perform(get("/api/v1/tasks")
+                        .param("size", "101"))
+                .andExpect(status().isBadRequest());
+
+        verifyNoInteractions(taskService);
+    }
+
+    @Test
+    void getAllTasksWithInvalidSortFieldShouldReturnBadRequest() throws Exception {
+        mockMvc.perform(get("/api/v1/tasks")
+                        .param("sortBy", "invalidColumn"))
+                .andExpect(status().isBadRequest());
+
+        verifyNoInteractions(taskService);
     }
 }
