@@ -19,9 +19,8 @@ services:
     ports:
       - "8081:8081"
     environment:
-      SPRING_DATASOURCE_URL: jdbc:oracle:thin:@//oracle:1521/CLOUDTASKPDB
-      SPRING_DATASOURCE_USERNAME: CLOUDTASK
-      SPRING_DATASOURCE_PASSWORD: ${CLOUDTASK_DB_PASSWORD}
+      SPRING_PROFILES_ACTIVE: docker
+      CLOUDTASK_DB_PASSWORD: ${CLOUDTASK_DB_PASSWORD}
     depends_on:
       - oracle
     restart: unless-stopped
